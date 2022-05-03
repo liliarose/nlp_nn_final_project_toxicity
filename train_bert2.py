@@ -178,8 +178,9 @@ def main(args):
     train_set = pd.read_csv(f'{args.data}/train.csv')
     test_set = pd.read_csv(f'{args.data}/test.csv')
 
-    if args.
-
+    if args.test:
+        train_set = train_set.iloc[:(2*args.batch_size)]
+        test_set = test_set.iloc[:(2*args.batch_size)]
     print('done reading data')
 
     print('entering train')
