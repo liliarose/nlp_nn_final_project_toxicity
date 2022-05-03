@@ -12,6 +12,8 @@ from torch import nn
 from torch.optim import Adam
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 
+loss_fn = nn.CrossEntropyLoss()
+
 def set_seed(seed_value=42):
     """Set seed for reproducibility.
     """
@@ -112,11 +114,11 @@ class BertClassifier(nn.Module):
 
         return logits
 
-def initialize_model(epochs=4, lr=5e-5):
+def initialize_model(epochs=4, lr=5e-5, bert_type='bert-base-uncased'):
     """Initialize the Bert Classifier, the optimizer and the learning rate scheduler.
     """
     # Instantiate Bert Classifier
-    bert_classifier = BertClassifier(freeze_bert=False)
+    bert_classifier = BertClassifier(bert_type, freeze_bert=False)
 
     # Tell PyTorch to run the model on GPU
     bert_classifier.to(device)
@@ -135,12 +137,74 @@ def initialize_model(epochs=4, lr=5e-5):
                                                 num_training_steps=total_steps)
     return bert_classifier, optimizer, scheduler
 
+def save_checkpoint(save_path, model, valid_loss):
 
-def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=False):
+    if save_path == None:
+        return
+    
+    state_dict = {'model_state_dict': model.state_dict(),
+                  'valid_loss': valid_loss}
+    
+    torch.save(state_dict, save_path)
+    print(f'Model saved to ==> {save_path}')
+
+def load_checkpoint(load_path, model):
+    
+    if load_path==None:
+        return
+    
+    state_dict = torch.load(load_path, map_location=device)
+    print(f'Model loaded from <== {load_path}')
+    
+    model.load_state_dict(state_dict['model_state_dict'])
+    return state_dict['valid_loss']
+
+def evaluate(model, val_dataloader):
+    """After the completion of each training epoch, measure the model's performance
+    on our validation set.
+    """
+    # Put the model into the evaluation mode. The dropout layers are disabled during
+    # the test time.
+    model.eval()
+
+    # Tracking variables
+    val_accuracy = []
+    val_loss = []
+
+    # For each batch in our validation set...
+    for batch in val_dataloader:
+        # Load batch to GPU
+        b_input_ids, b_attn_mask, b_labels = tuple(t.to(device) for t in batch)
+
+        # Compute logits
+        with torch.no_grad():
+            logits = model(b_input_ids, b_attn_mask)
+
+        # Compute loss
+        loss = loss_fn(logits, b_labels)
+        val_loss.append(loss.item())
+
+        # Get the predictions
+        preds = torch.argmax(logits, dim=1).flatten()
+
+        # Calculate the accuracy rate
+        accuracy = (preds == b_labels).cpu().numpy().mean() * 100
+        val_accuracy.append(accuracy)
+
+    # Compute the average accuracy and loss over the validation set.
+    val_loss = np.mean(val_loss)
+    val_accuracy = np.mean(val_accuracy)
+
+    return val_loss, val_accuracy
+
+def train(model, train_dataloader, val_dataloader, sav_loc, optimizer, scheduler, epochs=4):
     """Train the BertClassifier model.
     """
     # Start training loop
     print("Start training...\n")
+
+    min_val_loss = float('inf')
+
     for epoch_i in range(epochs):
         # #################
         # Training
@@ -186,7 +250,7 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
             scheduler.step()
 
             # Print the loss values and time elapsed for every 20 batches
-            if (step % 20 == 0 and step != 0) or (step == len(train_dataloader) - 1):
+            if (step % 25 == 0 and step != 0) or (step == len(train_dataloader) - 1):
                 # Calculate time elapsed for 20 batches
                 time_elapsed = time.time() - t0_batch
 
@@ -204,49 +268,31 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
         # #################
         # Evaluation
         # #################
-        if evaluation == True:
-            # After the completion of each training epoch, measure the model's performance
-            # on our validation set.
-            val_loss, val_accuracy = evaluate(model, val_dataloader)
+        # After the completion of each training epoch, measure the model's performance
+        # on our validation set.
+        val_loss, val_accuracy = evaluate(model, val_dataloader)
 
-            # Print performance over the entire training data
-            time_elapsed = time.time() - t0_epoch
-            
-            print(f"{epoch_i + 1:^7} | {'-':^7} | {avg_train_loss:^12.6f} | {val_loss:^10.6f} | {val_accuracy:^9.2f} | {time_elapsed:^9.2f}")
-            print("-"*70)
+        # Print performance over the entire training data
+        time_elapsed = time.time() - t0_epoch
+        
+        # save if smaller
+        if min_val_loss > val_loss:
+            fn = f'{sav_loc}epoch_{epoch_i}/{epoch_i}_{val_loss}.pt'
+            save_checkpoint(fn, model, val_loss)
+        print(f"{epoch_i + 1:^7} | {'-':^7} | {avg_train_loss:^12.6f} | {val_loss:^10.6f} | {val_accuracy:^9.2f} | {time_elapsed:^9.2f}")
+        print("-"*70)
         print("\n")
     
     print("Training complete!")
 
-def save_checkpoint(save_path, model, valid_loss):
-
-    if save_path == None:
-        return
-    
-    state_dict = {'model_state_dict': model.state_dict(),
-                  'valid_loss': valid_loss}
-    
-    torch.save(state_dict, save_path)
-    print(f'Model saved to ==> {save_path}')
-
-def load_checkpoint(load_path, model):
-    
-    if load_path==None:
-        return
-    
-    state_dict = torch.load(load_path, map_location=device)
-    print(f'Model loaded from <== {load_path}')
-    
-    model.load_state_dict(state_dict['model_state_dict'])
-    return state_dict['valid_loss']
 
 # also assumes that they have comment_text & toxic columns
 def main(args):
     # deal with this....
     train = pd.read_csv(f'{args.data}/train.csv')
-    valid = pd.read_csv(f'{args.data}/valid.csv')
+    test = pd.read_csv(f'{args.data}/test.csv')
     X_train, X_val = train['comment_text'], train['toxic']
-    y_train, y_val = valid['comment_text'], valid['toxic']
+    y_train, y_val = test['comment_text'], test['toxic']
 
     # tokenize
     tokenizer = BertTokenizer.from_pretrained(args.bert_type, do_lower_case=True)
@@ -257,7 +303,7 @@ def main(args):
     train_labels = torch.tensor(y_train)
     val_labels = torch.tensor(y_val)
 
-    # create dataloader for training & validation
+    # create dataloader for training & testing
     train_data = TensorDataset(train_inputs, train_masks, train_labels)
     train_sampler = RandomSampler(train_data)
     train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=args.batch_size)
@@ -265,8 +311,9 @@ def main(args):
     val_sampler = SequentialSampler(val_data)
     val_dataloader = DataLoader(val_data, sampler=val_sampler, batch_size=args.batch_size)
 
-    # specify loss function 
-    loss_fn = nn.CrossEntropyLoss()
+    set_seed(args.seed)
+    bert_classifier, optimizer, scheduler = initialize_model(epochs=args.warm_up_epochs, lr=args.learning_rate, bert_type=args.bert_type)
+    train(bert_classifier, train_dataloader, val_dataloader, args.save_checkpoint, optimizer, scheduler, epochs=args.epochs)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -275,7 +322,10 @@ if __name__ == "__main__":
     parser.add_argument('--learning_rate', '-lr', default=0.0001, help='default adam learning rate', type=float)
     parser.add_argument('--bert_type', '-b', default='bert-base-uncased', help='type of bert to use')
     parser.add_argument('--max_len', '-ml', default=512, help='max length of tokens')
+    parser.add_argument('--warm_up_epochs', '-wep', default=2, help='number of epochs for warming up')
     parser.add_argument('--epochs', '-ep', default=2, help='number of epochs')
+    parser.add_argument('--save_checkpoint', '-sc', default='models/', help='where to save models; make sure to include / at the end or a prefix')
+    parser.add_argument('--seed', '-sd', default=42, help='seed to set it at')
     args = parser.parse_args()
     main(args)
 
