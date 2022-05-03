@@ -22,21 +22,21 @@ def set_seed(seed_value=42):
     torch.manual_seed(seed_value)
     torch.cuda.manual_seed_all(seed_value)
 
-def text_preprocessing(text):
-    """
-    - Remove entity mentions (eg. '@united')
-    - Correct errors (eg. '&amp;' to '&')
-    """
-    # Remove '@name'
-    text = re.sub(r'(@.*?)[\s]', ' ', text)
+# def text_preprocessing(text):
+#     """
+#     - Remove entity mentions (eg. '@united')
+#     - Correct errors (eg. '&amp;' to '&')
+#     """
+#     # Remove '@name'
+#     text = re.sub(r'(@.*?)[\s]', ' ', text)
 
-    # Replace '&amp;' with '&'
-    text = re.sub(r'&amp;', '&', text)
+#     # Replace '&amp;' with '&'
+#     text = re.sub(r'&amp;', '&', text)
 
-    # Remove trailing whitespace
-    text = re.sub(r'\s+', ' ', text).strip()
+#     # Remove trailing whitespace
+#     text = re.sub(r'\s+', ' ', text).strip()
 
-    return text
+#     return text
 
 
 # Create a function to tokenize a set of texts
@@ -292,8 +292,8 @@ def main(args):
     # deal with this....
     train = pd.read_csv(f'{args.data}/train.csv')
     test = pd.read_csv(f'{args.data}/test.csv')
-    X_train, X_val = train['comment_text'], train['toxic']
-    y_train, y_val = test['comment_text'], test['toxic']
+    X_train, X_val = train['comment_text'].tolist(), train['toxic'].tolist()
+    y_train, y_val = test['comment_text'].tolist(), test['toxic'].tolist()
 
     # tokenize
     tokenizer = BertTokenizer.from_pretrained(args.bert_type, do_lower_case=True)
