@@ -27,6 +27,7 @@ def text_preprocessing(text):
     - Remove entity mentions (eg. '@united')
     - Correct errors (eg. '&amp;' to '&')
     """
+    print(text)
     # Remove '@name'
     text = re.sub(r'(@.*?)[\s]', ' ', text)
 
