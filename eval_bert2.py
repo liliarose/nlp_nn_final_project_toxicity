@@ -26,6 +26,8 @@ def load_checkpoint(load_path, model):
 
 def evaluate(model, val_dataloader, sav_loc, val_data_len, calc_class=1):
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    if torch.cuda.is_available():
+        model = model.cuda()
     total_acc_val = 0
     total_loss_val = 0
     correct_true_val = 0

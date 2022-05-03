@@ -178,6 +178,8 @@ def main(args):
     train_set = pd.read_csv(f'{args.data}/train.csv')
     test_set = pd.read_csv(f'{args.data}/test.csv')
 
+    if args.
+
     print('done reading data')
 
     print('entering train')
@@ -189,6 +191,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('data', help='folder with data')
     parser.add_argument('--batch_size', '-bs', default=32, type=int, help='batch size')
+    parser.add_argument('--test', '-t', action='store_true', help='tests on a smaller subset')
     parser.add_argument('--learning_rate', '-lr', default=0.0001, type=float, help='default adam learning rate')
     parser.add_argument('--bertmodel', '-b', default='bert-base-uncased', help='type of bert to use')
     parser.add_argument('--epochs', '-ep', default=4, type=int, help='number of epochs')
