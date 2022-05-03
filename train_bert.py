@@ -51,7 +51,8 @@ def preprocessing_for_bert(data, tokenizer, max_len=512):
             text=text_preprocessing(sent),  # Preprocess sentence
             add_special_tokens=True,        # Add `[CLS]` and `[SEP]`
             max_length=max_len,                  # Max length to truncate/pad
-            truncation=True                 # truncating 
+            truncation=True,                 # truncating 
+            pad_to_max_length=True,         # Pad sentence to max length
             return_attention_mask=True      # Return attention mask
             )
 
@@ -295,25 +296,33 @@ def main(args):
     X_train, X_val = train['comment_text'].tolist(), train['toxic'].tolist()
     y_train, y_val = test['comment_text'].tolist(), test['toxic'].tolist()
 
+    print('done reading data')
+
     # tokenize
     tokenizer = BertTokenizer.from_pretrained(args.bert_type, do_lower_case=True)
     train_inputs, train_masks = preprocessing_for_bert(X_train, tokenizer, args.max_len)
     val_inputs, val_masks = preprocessing_for_bert(X_val, tokenizer, args.max_len)
+    print('done tokkenizing')
 
     # convert to Tensor
     train_labels = torch.tensor(y_train)
     val_labels = torch.tensor(y_val)
 
+    print('done converting labels to tensor')
+
     # create dataloader for training & testing
     train_data = TensorDataset(train_inputs, train_masks, train_labels)
     train_sampler = RandomSampler(train_data)
     train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=args.batch_size)
+    print('done creating dataloader for train')
     val_data = TensorDataset(val_inputs, val_masks, val_labels)
     val_sampler = SequentialSampler(val_data)
     val_dataloader = DataLoader(val_data, sampler=val_sampler, batch_size=args.batch_size)
+    print('done creating dataloader for validation')
 
     set_seed(args.seed)
     bert_classifier, optimizer, scheduler = initialize_model(epochs=args.warm_up_epochs, lr=args.learning_rate, bert_type=args.bert_type)
+    print('done initializing the model')
     train(bert_classifier, train_dataloader, val_dataloader, args.save_checkpoint, optimizer, scheduler, epochs=args.epochs)
 
 if __name__ == "__main__":
