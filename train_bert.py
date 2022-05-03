@@ -51,6 +51,7 @@ def preprocessing_for_bert(data, tokenizer, max_len=512):
             text=text_preprocessing(sent),  # Preprocess sentence
             add_special_tokens=True,        # Add `[CLS]` and `[SEP]`
             max_length=max_len,                  # Max length to truncate/pad
+            truncation=True                 # truncating 
             return_attention_mask=True      # Return attention mask
             )
 
