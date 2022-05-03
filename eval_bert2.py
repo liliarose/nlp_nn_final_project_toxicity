@@ -8,7 +8,6 @@ from transformers import BertTokenizer, BertModel, BertForSequenceClassification
 from torch import nn
 from torch.optim import Adam
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
-from sklearn.metrics import roc_auc_score
 
 from train_bert2 import Dataset, BertClassifier
 
@@ -25,36 +24,47 @@ def load_checkpoint(load_path, model):
     return state_dict['valid_loss']
 
 def evaluate(model, val_dataloader, sav_loc, val_data_len, calc_class=1):
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    if torch.cuda.is_available():
+    '''
+      evaluates the model & saves the probabilities in a numpy file 
+      Also calcuates recall and accuracy along the way as well
+      Code very similar to one in  
+    '''
+
+    # check if we can use gpu 
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+    print('use_cuda', use_cuda)
+
+    # if we can use gpu, make sure the model & gradient computation 
+    # are doing so 
+    if use_cuda:
         model = model.cuda()
+    print('finished deciding cuda & other initalization')
+
+    # for calculation of metrics 
     total_acc_val = 0
-    total_loss_val = 0
     correct_true_val = 0
     target_true_val = 0
-    criterion = nn.CrossEntropyLoss()
+    # will be array of all probabilites 
     all_probs = None
     with torch.no_grad():
         for val_input, val_label in val_dataloader:
-            # everything here is the same as before except we use  
+            # forward pass 
             val_label = val_label.to(device)
             mask = val_input['attention_mask'].to(device)
             input_id = val_input['input_ids'].squeeze(1).to(device)
-
             output = model(input_id, mask)
-
-            batch_loss = criterion(output, val_label)
-            total_loss_val += batch_loss.item()
             
+            # for accuracy 
             acc = (output.argmax(dim=1) == val_label).sum().item()
             total_acc_val += acc
 
             # for recall 
-            predicted_classes = (output.argmax(dim=1) == calc_class)
-            correct_classes = (predicted_classes == val_label).int() 
-            true_classes = (predicted_classes == calc_class).int()
-            target_true_val = torch.sum(true_classes).int()
-            correct_true_val += torch.sum(correct_classes* true_classes).int()
+            predicted_classes = (output.argmax(dim=1) == calc_class)        # calculates the # predicted for the class we're interested       
+            correct_classes = (predicted_classes == val_label).int()      # calculates the number acutally correctly calculated class
+            target_true_val += torch.sum(val_label == calc_class)       # the number actually in the classes that we're interested
+            # the # correctly calculated in the class we're interested in 
+            correct_true_val += torch.sum(correct_classes* (predicted_classes == calc_class).int()).int()
 
             # for saving the probabilities 
             curr_probs = output.detach().numpy()
@@ -64,12 +74,12 @@ def evaluate(model, val_dataloader, sav_loc, val_data_len, calc_class=1):
                 all_probs = np.concatenate([all_probs, curr_probs])
                 
 
-        
+    # prints metrics   
     print(
-        f'Val Loss: {total_loss_val / val_data_len: .3f} \
-        | Val Accuracy: {total_acc_val / val_data_len: .3f}\
+        f'Val Accuracy: {total_acc_val / val_data_len: .3f}\
         | Val Recall: {correct_true_val / target_true_val : .3f}')
 
+    # saves the metrics 
     with open(sav_loc, 'wb') as f:
         np.save(f, all_probs)
                 
