@@ -2,13 +2,9 @@ import argparse
 import pandas as pd
 import torch
 import numpy as np
-from transformers import BertTokenizer
-from torch import nn
-from transformers import BertModel
-from torch.optim import Adam
 from tqdm import tqdm
 
-from transformers import BertTokenizer, BertModel
+from transformers import BertTokenizer, BertModel, BertForSequenceClassification
 from torch import nn
 from torch.optim import Adam
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
@@ -67,6 +63,18 @@ def save_checkpoint(save_path, model, valid_loss):
     
 #     model.load_state_dict(state_dict['model_state_dict'])
 #     return state_dict['valid_loss']
+
+class BERT(nn.Module):
+
+    def __init__(self, bertmodel='bert-base-cased'):
+        super(BERT, self).__init__()
+
+        self.encoder = BertForSequenceClassification.from_pretrained(bertmodel)
+
+    def forward(self, text, label):
+        loss, text_fea = self.encoder(text, labels=label)[:2]
+
+        return loss, text_fea
 
 class BertClassifier(nn.Module):
 
