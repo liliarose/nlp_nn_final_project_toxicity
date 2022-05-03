@@ -22,21 +22,21 @@ def set_seed(seed_value=42):
     torch.manual_seed(seed_value)
     torch.cuda.manual_seed_all(seed_value)
 
-# def text_preprocessing(text):
-#     """
-#     - Remove entity mentions (eg. '@united')
-#     - Correct errors (eg. '&amp;' to '&')
-#     """
-#     # Remove '@name'
-#     text = re.sub(r'(@.*?)[\s]', ' ', text)
+def text_preprocessing(text):
+    """
+    - Remove entity mentions (eg. '@united')
+    - Correct errors (eg. '&amp;' to '&')
+    """
+    # Remove '@name'
+    text = re.sub(r'(@.*?)[\s]', ' ', text)
 
-#     # Replace '&amp;' with '&'
-#     text = re.sub(r'&amp;', '&', text)
+    # Replace '&amp;' with '&'
+    text = re.sub(r'&amp;', '&', text)
 
-#     # Remove trailing whitespace
-#     text = re.sub(r'\s+', ' ', text).strip()
+    # Remove trailing whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
 
-#     return text
+    return text
 
 
 # Create a function to tokenize a set of texts
@@ -48,7 +48,7 @@ def preprocessing_for_bert(data, tokenizer, max_len=512):
     # For every sentence...
     for sent in data:
         encoded_sent = tokenizer.encode_plus(
-            # text=text_preprocessing(sent),  # Preprocess sentence
+            text=text_preprocessing(sent),  # Preprocess sentence
             add_special_tokens=True,        # Add `[CLS]` and `[SEP]`
             max_length=max_len,                  # Max length to truncate/pad
             truncation=True,                 # truncating 
