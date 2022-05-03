@@ -36,7 +36,7 @@ def text_preprocessing(text):
     # Remove trailing whitespace
     text = re.sub(r'\s+', ' ', text).strip()
 
-    return texti
+    return text
 
 
 # Create a function to tokenize a set of texts
