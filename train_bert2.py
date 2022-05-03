@@ -91,10 +91,10 @@ def evaluate(model, val_dataloader):
     pass
 
 def train(bertmodel, train_data, val_data, learning_rate,
-     epochs, sav_loc, bs=16, calc_class=1):
+     epochs, sav_loc, bs=16, calc_class=1, dropout=0.5):
 
     # create a bert model 
-    model = BertClassifier(bertmodel=bertmodel)
+    model = BertClassifier(bertmodel=bertmodel, dropout=dropout)
     # create a tokenizer & tokenize classes 
     tokenizer = BertTokenizer.from_pretrained(bertmodel)
     train, val = Dataset(train_data, tokenizer), Dataset(val_data, tokenizer)
@@ -121,13 +121,12 @@ def train(bertmodel, train_data, val_data, learning_rate,
 
     # initialized to check when to save for stuff 
     min_val_loss = float('inf')
-    target_true_train = (train_data[label_col] == calc_class).sum()
-    target_true_val = (val_data[label_col] == calc_class).sum()
 
     for epoch_num in range(epochs):
         # for calculating accuracy & loss & recall
         total_acc_train = 0
         total_loss_train = 0
+        target_true_train = 0
         correct_true_train = 0 
         for train_input, train_label in tqdm(train_dataloader):
 
@@ -151,6 +150,7 @@ def train(bertmodel, train_data, val_data, learning_rate,
             predicted_classes = (output.argmax(dim=1) == calc_class)
             correct_classes = (predicted_classes == train_label).int() 
             true_classes = (predicted_classes == calc_class).int()
+            target_true_train = torch.sum(true_classes).int()
             correct_true_train += torch.sum( correct_classes* true_classes).int()
 
             # updates 
@@ -158,9 +158,11 @@ def train(bertmodel, train_data, val_data, learning_rate,
             batch_loss.backward() # back propagation 
             optimizer.step() # optimizer takes a step 
         
+        print('finished training')
         total_acc_val = 0
         total_loss_val = 0
         correct_true_val = 0
+        target_true_val = 0
         with torch.no_grad():
 
             for val_input, val_label in val_dataloader:
@@ -181,6 +183,7 @@ def train(bertmodel, train_data, val_data, learning_rate,
                 predicted_classes = (output.argmax(dim=1) == calc_class)
                 correct_classes = (predicted_classes == val_label).int() 
                 true_classes = (predicted_classes == calc_class).int()
+                target_true_val = torch.sum(true_classes).int()
                 correct_true_train += torch.sum(correct_classes* true_classes).int()
             
         print(
@@ -206,21 +209,19 @@ def main(args):
     print('done reading data')
 
     print('entering train')
-    train(args.bertmodel, train_set, test_set, args.learning_rate, args.epoch, 
-        args.save_checkpoint, args.batch_size, args.calc_class)
+    train(args.bertmodel, train_set, test_set, args.learning_rate, args.epochs, 
+        args.save_checkpoint, args.batch_size, args.calc_class, args.dropout)
     # train('bert-base-uncased', train_set, test_set, 1e-5, 2, 'models/', 32)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('data', help='folder with data')
-    parser.add_argument('--batch_size', '-bs', default=32, help='batch size', type=int)
-    parser.add_argument('--learning_rate', '-lr', default=0.0001, help='default adam learning rate', type=float)
+    parser.add_argument('--batch_size', '-bs', default=32, type=int, help='batch size')
+    parser.add_argument('--learning_rate', '-lr', default=0.0001, type=float, help='default adam learning rate')
     parser.add_argument('--bertmodel', '-b', default='bert-base-uncased', help='type of bert to use')
-    # parser.add_argument('--max_len', '-ml', default=512, help='max length of tokens')
-    # parser.add_argument('--warm_up_epochs', '-wep', default=2, help='number of epochs for warming up')
-    parser.add_argument('--epochs', '-ep', default=5, help='number of epochs')
-    parser.add_argument('--dropout', '-dr', default=0.5, help='dropout rate for the linear layer')
-    parser.add_argument('--calc_class', '-cc', default=1, help='class to calculate recall & auc')
+    parser.add_argument('--epochs', '-ep', default=4, type=int, help='number of epochs')
+    parser.add_argument('--dropout', '-dr', default=0.5, type=float, help='dropout rate for the linear layer')
+    parser.add_argument('--calc_class', '-cc', default=1, type=int, help='class to calculate recall & auc')
     parser.add_argument('--save_checkpoint', '-sc', default='models/', help='where to save models; make sure to include / at the end or a prefix')
     
     # parser.add_argument('--seed', '-sd', default=42, help='seed to set it at')
