@@ -24,15 +24,7 @@ class Dataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.labels)
-
-    # def get_batch_labels(self, idx):
-    #     # Fetch a batch of labels
-    #     return np.array(self.labels[idx])
-
-    # def get_batch_texts(self, idx):
-    #     # Fetch a batch of inputs
-    #     return self.texts[idx]
-
+    
     def __getitem__(self, idx):
 
         batch_texts = self.texts[idx]
@@ -52,30 +44,6 @@ def save_checkpoint(save_path, model, valid_loss):
     torch.save(state_dict, save_path)
     print(f'Model saved to ==> {save_path}')
 
-# device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-# def load_checkpoint(load_path, model):
-    
-#     if load_path==None:
-#         return
-    
-#     state_dict = torch.load(load_path, map_location=device)
-#     print(f'Model loaded from <== {load_path}')
-    
-#     model.load_state_dict(state_dict['model_state_dict'])
-#     return state_dict['valid_loss']
-
-class BERT(nn.Module):
-
-    def __init__(self, bertmodel='bert-base-cased'):
-        super(BERT, self).__init__()
-
-        self.encoder = BertForSequenceClassification.from_pretrained(bertmodel)
-
-    def forward(self, text, label):
-        loss, text_fea = self.encoder(text, labels=label)[:2]
-
-        return loss, text_fea
-
 class BertClassifier(nn.Module):
 
     def __init__(self, dropout=0.5, bertmodel='bert-base-cased'):
@@ -94,9 +62,6 @@ class BertClassifier(nn.Module):
         linear_output = self.linear(dropout_output)
         final_layer = self.relu(linear_output)
         return final_layer
-
-def evaluate(model, val_dataloader):
-    pass
 
 def train(bertmodel, train_data, val_data, learning_rate,
      epochs, sav_loc, bs=16, calc_class=1, dropout=0.5):
@@ -230,9 +195,7 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', '-ep', default=4, type=int, help='number of epochs')
     parser.add_argument('--dropout', '-dr', default=0.5, type=float, help='dropout rate for the linear layer')
     parser.add_argument('--calc_class', '-cc', default=1, type=int, help='class to calculate recall & auc')
-    parser.add_argument('--save_checkpoint', '-sc', default='models/', help='where to save models; make sure to include / at the end or a prefix')
-    
-    # parser.add_argument('--seed', '-sd', default=42, help='seed to set it at')
+    parser.add_argument('--save_checkpoint', '-sc', default='models/', help='where to save models or results; make sure to include / at the end or a prefix')
     args = parser.parse_args()
     main(args)
 
