@@ -8,7 +8,6 @@ from transformers import BertTokenizer, BertModel, BertForSequenceClassification
 from torch import nn
 from torch.optim import Adam
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
-from sklearn.metrics import roc_auc_score
 
 label_col = 'toxic'
 text_col = 'comment_text'
