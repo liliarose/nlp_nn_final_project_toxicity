@@ -158,9 +158,10 @@ def train(bertmodel, train_data, val_data, learning_rate, epochs, sav_loc, bs=16
             
             if total_loss_val < min_val_loss:
                 print('SAVING checkpoint')
-                fn = f'{sav_loc}epoch_{epoch_i}/{epoch_num}_{total_loss_val / len(val_data)}.pt'
-                save_checkpoint(fn, model, val_loss)
-
+                fn = f'{sav_loc}epoch_{epoch_num}/{epoch_num}_{total_loss_val / len(val_data)}.pt'
+                save_checkpoint(fn, model, total_loss_val)
+                min_val_loss = total_loss_val
+                
 # also assumes that they have comment_text & toxic columns
 def main(args):
     # deal with this....
@@ -171,6 +172,7 @@ def main(args):
 
     print('entering train')
     train(args.bertmodel, train_set, test_set, args.learning_rate, args.epochs, args.batch_size)
+    # train('bert-base-uncased', train_set, test_set, 1e-5, 2, 32)
 
     # # tokenize & loading data 
 
