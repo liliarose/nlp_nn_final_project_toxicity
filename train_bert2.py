@@ -86,7 +86,7 @@ class BertClassifier(nn.Module):
         final_layer = self.relu(linear_output)
         return final_layer
 
-def train(bertmodel, train_data, val_data, learning_rate, epochs, bs=16):
+def train(bertmodel, train_data, val_data, learning_rate, epochs, sav_loc, bs=16):
     model = BertClassifier(bertmodel=bertmodel)
     tokenizer = BertTokenizer.from_pretrained(bertmodel)
     train, val = Dataset(train_data, tokenizer), Dataset(val_data, tokenizer)
@@ -107,6 +107,7 @@ def train(bertmodel, train_data, val_data, learning_rate, epochs, bs=16):
             model = model.cuda()
             criterion = criterion.cuda()
     print('finished deciding cuda & other initalization')
+    min_val_loss = float('inf')
     for epoch_num in range(epochs):
 
             total_acc_train = 0
@@ -154,6 +155,12 @@ def train(bertmodel, train_data, val_data, learning_rate, epochs, bs=16):
                 | Train Accuracy: {total_acc_train / len(train_data): .3f} \
                 | Val Loss: {total_loss_val / len(val_data): .3f} \
                 | Val Accuracy: {total_acc_val / len(val_data): .3f}')
+            
+            if total_loss_val < min_val_loss:
+                print('SAVING checkpoint')
+                fn = f'{sav_loc}epoch_{epoch_i}/{epoch_num}_{total_loss_val / len(val_data)}.pt'
+                save_checkpoint(fn, model, val_loss)
+
 # also assumes that they have comment_text & toxic columns
 def main(args):
     # deal with this....
