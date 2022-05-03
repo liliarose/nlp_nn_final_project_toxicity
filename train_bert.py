@@ -48,7 +48,7 @@ def preprocessing_for_bert(data, tokenizer, max_len=512):
     # For every sentence...
     for sent in data:
         encoded_sent = tokenizer.encode_plus(
-            text=text_preprocessing(sent),  # Preprocess sentence
+            # text=text_preprocessing(sent),  # Preprocess sentence
             add_special_tokens=True,        # Add `[CLS]` and `[SEP]`
             max_length=max_len,                  # Max length to truncate/pad
             truncation=True,                 # truncating 
