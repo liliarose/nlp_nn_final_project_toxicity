@@ -40,7 +40,7 @@ def text_preprocessing(text):
 
 
 # Create a function to tokenize a set of texts
-def preprocessing_for_bert(data, max_len=512):
+def preprocessing_for_bert(data, tokenizer, max_len=512):
     # Create empty lists to store outputs
     input_ids = []
     attention_masks = []
@@ -296,8 +296,8 @@ def main(args):
 
     # tokenize
     tokenizer = BertTokenizer.from_pretrained(args.bert_type, do_lower_case=True)
-    train_inputs, train_masks = preprocessing_for_bert(X_train, args.max_len)
-    val_inputs, val_masks = preprocessing_for_bert(X_val, args.max_len)
+    train_inputs, train_masks = preprocessing_for_bert(X_train, tokenizer, args.max_len)
+    val_inputs, val_masks = preprocessing_for_bert(X_val, tokenizer, args.max_len)
 
     # convert to Tensor
     train_labels = torch.tensor(y_train)
