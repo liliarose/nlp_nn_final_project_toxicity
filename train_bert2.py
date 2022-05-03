@@ -18,11 +18,11 @@ text_col = 'comment_text'
 
 class Dataset(torch.utils.data.Dataset):
 
-    def __init__(self, df):
-        self.labels = [label for label in df[text_col]]
+    def __init__(self, df, tokenizer):
+        self.labels = [label for label in df[label_col]]
         self.texts = [tokenizer(text, 
                                padding='max_length', max_length = 512, truncation=True,
-                                return_tensors="pt") for text in df[label_col]]
+                                return_tensors="pt") for text in df[text_col]]
 
     def classes(self):
         return self.labels
@@ -86,9 +86,12 @@ class BertClassifier(nn.Module):
         final_layer = self.relu(linear_output)
         return final_layer
 
-def train(model, train_data, val_data, learning_rate, epochs, bs=16):
-    train, val = Dataset(train_data), Dataset(val_data)
-    print('finished making data into stuff; this takes really long')
+def train(bertmodel, train_data, val_data, learning_rate, epochs, bs=16):
+    model = BertClassifier(bertmodel=bertmodel)
+    tokenizer = BertTokenizer.from_pretrained(bertmodel)
+    train, val = Dataset(train_data, tokenizer), Dataset(val_data, tokenizer)
+
+    print('created datasets')
     train_dataloader = torch.utils.data.DataLoader(train, batch_size=bs, shuffle=True)
     val_dataloader = torch.utils.data.DataLoader(val, batch_size=bs)
 
@@ -154,14 +157,13 @@ def train(model, train_data, val_data, learning_rate, epochs, bs=16):
 # also assumes that they have comment_text & toxic columns
 def main(args):
     # deal with this....
-    train = pd.read_csv(f'{args.data}/train.csv')
-    test = pd.read_csv(f'{args.data}/test.csv')
+    train_set = pd.read_csv(f'{args.data}/train.csv')
+    test_set = pd.read_csv(f'{args.data}/test.csv')
 
     print('done reading data')
 
-    model = BertClassifier(bertmodel=args.bertmodel)
     print('entering train')
-    train(model, train, test, args.learning_rate, args.epochs, args.batch_size)
+    train(args.bertmodel, train_set, test_set, args.learning_rate, args.epochs, args.batch_size)
 
     # # tokenize & loading data 
 
