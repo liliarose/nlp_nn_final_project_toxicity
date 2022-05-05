@@ -67,7 +67,10 @@ def evaluate(model, val_dataloader, sav_loc, val_data_len, calc_class=1):
             correct_true_val += torch.sum(correct_classes* (predicted_classes == calc_class).int()).int()
 
             # for saving the probabilities 
-            curr_probs = output.detach().numpy()
+            if use_cuda:
+                curr_probs = output.cpu().numpy() 
+            else:
+                curr_probs = output.detach().numpy()
             if all_probs is None:
                 all_probs = curr_probs
             else:
